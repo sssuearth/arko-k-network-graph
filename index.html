@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Network Graph</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      #app {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+      canvas {
+        display: block;
+      }
+      #guiToggle {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        z-index: 30;
+      }
+      #guiToggle span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: var(--hamburger-color, #000);
+        border-radius: 1px;
+      }
+      #dragOverlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(80, 130, 255, 0.08);
+        border: 3px dashed rgba(80, 130, 255, 0.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: #3a5ccc;
+        z-index: 100;
+        pointer-events: none;
+      }
+      #dragOverlay.active {
+        display: flex;
+      }
+      #loadingOverlay {
+        position: fixed;
+        inset: 0;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        color: #888;
+        z-index: 200;
+        transition: opacity 0.4s ease;
+      }
+
+      /* Tone-on-tone panel theme, driven by JS-updated CSS variables on :root
+         (see applyPanelTheme in main.js) so it can track the scene background color.
+         Targeting the base .lil-gui class (not just .root) matters: every
+         nested folder renders its own .lil-gui element and re-declares these
+         custom properties from lil-gui's own stylesheet, which would
+         otherwise reset color back to the dark defaults past the first level. */
+      .lil-gui {
+        --background-color: var(--panel-bg, #fafafa);
+        --text-color: var(--panel-text, #2a2a2a);
+        --title-background-color: var(--panel-title-bg, #f0f0f0);
+        --title-text-color: var(--panel-text, #2a2a2a);
+        --widget-color: var(--panel-widget, #eaeaea);
+        --hover-color: var(--panel-hover, #dedede);
+        --focus-color: var(--panel-accent, #3a6cff);
+        --number-color: var(--panel-accent, #2a5ed9);
+        --string-color: var(--panel-accent, #2a5ed9);
+      }
+      .lil-gui.root {
+        border: 1px solid var(--panel-border, rgba(0, 0, 0, 0.08));
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <button id="guiToggle" aria-label="컨트롤 패널 토글">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div id="dragOverlay">여기에 이미지를 놓으세요</div>
+      <div id="loadingOverlay">로딩 중...</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
