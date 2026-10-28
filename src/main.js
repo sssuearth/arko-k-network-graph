@@ -12,10 +12,23 @@ import { createHub, setHubColor, setHubSize, setHubVisible } from './scene/hub.j
 import { buildImageNodes, disposeImageNodes } from './scene/imageNodes.js';
 import { buildEdgeDefs, createEdgesSystem } from './scene/edges.js';
 import { Motion } from './scene/motion.js';
+import { buildShapePositions, ShapeMorph } from './scene/shapes.js';
 import { createControlPanel } from './gui/controlPanel.js';
 import { relativeLuminance, lighten, darken } from './utils/color.js';
 
+const SHAPE_SVG = {
+  a: '/shapes/1_logo_a.svg',
+  r: '/shapes/2_logo_r.svg',
+  k: '/shapes/3_logo_k.svg',
+  o: '/shapes/4_logo_o.svg',
+  arko: '/shapes/5_logo_arko.svg',
+};
+
 const state = {
+  shape: {
+    type: 'sphere',
+    morphDuration: 1200,
+  },
   layout: {
     nodeCount: 158,
     sphereRadius: 36,
@@ -84,12 +97,15 @@ setHubVisible(hub, state.hub.visible);
 rootGroup.add(hub);
 
 const motion = new Motion(state.layout.seed);
+const shapeMorph = new ShapeMorph();
 
 let nodes = [];
 let edgesSystem = null;
 let sourceImageUrls = [];
 let cameraBaseDistance = state.layout.sphereRadius * 2.8;
 let usingDroppedImages = false;
+let shapeCache = {};
+let shapeRequestToken = 0;
 
 function disposeCurrent() {
   if (edgesSystem) {
@@ -127,11 +143,30 @@ async function rebuild({ replayIntro = true } = {}) {
 
   cameraBaseDistance = sphereRadius * 2.8;
 
+  // Layout changes invalidate any sampled shape (point count/scale no longer match),
+  // so re-sample the currently selected shape at the new nodeCount/radius/seed and
+  // snap straight to it (no animation) instead of dropping back to sphere.
+  shapeCache = { sphere: positions.map((p) => p.clone()) };
+  if (state.shape.type !== 'sphere') {
+    const target = await getShapePositions(state.shape.type);
+    for (let i = 0; i < nodes.length && i < target.length; i++) {
+      nodes[i].basePosition.copy(target[i]);
+    }
+  }
+
   if (replayIntro) motion.playIntro(state.motion.introDuration);
 }
 
 function refreshGuiDisplay() {
   gui.controllersRecursive().forEach((c) => c.updateDisplay());
+}
+
+async function getShapePositions(type) {
+  if (shapeCache[type]) return shapeCache[type];
+  const url = SHAPE_SVG[type];
+  const positions = await buildShapePositions(url, state.layout.nodeCount, state.layout.sphereRadius, state.layout.seed);
+  shapeCache[type] = positions;
+  return positions;
 }
 
 // Tone-on-tone panel theme: panel background tracks the scene background
@@ -160,6 +195,15 @@ applyPanelTheme(state.display.backgroundColor);
 let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
+let recordingStartTime = 0;
+let recordingTimerId = null;
+
+function formatElapsed(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+  const s = String(totalSec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
 
 function pickRecorderMimeType() {
   const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -200,9 +244,17 @@ function startRecording() {
   };
   mediaRecorder.start();
   isRecording = true;
+
+  recordingStartTime = performance.now();
+  setRecordingLabel(`⏱ 00:00 정지`);
+  recordingTimerId = setInterval(() => {
+    setRecordingLabel(`⏱ ${formatElapsed(performance.now() - recordingStartTime)} 정지`);
+  }, 200);
 }
 
 function stopRecordingAndSave() {
+  clearInterval(recordingTimerId);
+  recordingTimerId = null;
   return new Promise((resolve) => {
     mediaRecorder.onstop = async () => {
       const blob = new Blob(recordedChunks, { type: 'video/webm' });
@@ -237,6 +289,19 @@ const { gui, setRecordingLabel } = createControlPanel(state, {
     rebuild({ replayIntro: true });
   },
   onReplayIntro: () => motion.playIntro(state.motion.introDuration),
+  onShapeChange: async (type) => {
+    const token = ++shapeRequestToken;
+    const from = nodes.map((n) => n.basePosition.clone());
+    let to;
+    try {
+      to = await getShapePositions(type);
+    } catch (err) {
+      console.error(err);
+      return;
+    }
+    if (token !== shapeRequestToken) return; // a newer shape change started meanwhile
+    shapeMorph.start(from, to, state.shape.morphDuration);
+  },
   onHideCursorChange: (value) => {
     renderer.domElement.style.cursor = value ? 'none' : '';
   },
@@ -247,7 +312,6 @@ const { gui, setRecordingLabel } = createControlPanel(state, {
   onToggleRecording: async () => {
     if (!isRecording) {
       startRecording();
-      setRecordingLabel('녹화 정지');
     } else {
       setRecordingLabel('저장 중...');
       await stopRecordingAndSave();
@@ -342,6 +406,7 @@ function animate() {
   const delta = clock.getDelta();
   const elapsed = clock.getElapsedTime();
 
+  shapeMorph.update(nodes);
   motion.update(nodes, elapsed, state.motion);
 
   if (state.camera.autoRotate) {

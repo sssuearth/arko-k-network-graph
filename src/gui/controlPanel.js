@@ -7,6 +7,14 @@ export function createControlPanel(state, callbacks) {
   gui.domElement.style.right = '16px';
   gui.domElement.style.zIndex = '20';
 
+  const shapeFolder = gui.addFolder('Shape');
+  shapeFolder
+    .add(state.shape, 'type', { '구형 (기본)': 'sphere', a: 'a', r: 'r', k: 'k', o: 'o', arko: 'arko' })
+    .name('모양')
+    .onChange(callbacks.onShapeChange);
+  shapeFolder.add(state.shape, 'morphDuration', 200, 5000, 50).name('전환 시간(ms)');
+  shapeFolder.open();
+
   const layoutFolder = gui.addFolder('Layout');
   layoutFolder.add(state.layout, 'nodeCount', 10, 600, 1).name('노드 수').onFinishChange(callbacks.onLayoutChange);
   layoutFolder.add(state.layout, 'sphereRadius', 5, 100, 0.5).name('구 반경').onChange(callbacks.onLayoutChange);
