@@ -87,12 +87,12 @@ export function createControlPanel(state, callbacks) {
       'saveNow'
     )
     .name('현재 설정 저장');
+  actions.add({ replay: () => callbacks.onReplayIntro() }, 'replay').name('다시시작(인트로+아웃트로)');
   actions.add({ reshuffle: () => callbacks.onReshuffle() }, 'reshuffle').name('Reshuffle');
-  actions.add({ replay: () => callbacks.onReplayIntro() }, 'replay').name('Replay Intro');
   actions.add({ savePNG: () => callbacks.onSavePNG() }, 'savePNG').name('PNG 저장');
   const recordController = actions
     .add({ record: () => callbacks.onToggleRecording() }, 'record')
-    .name('녹화 시작');
+    .name('다시시작+녹화 시작');
   actions.add({ saveSettings: () => callbacks.onSaveSettings() }, 'saveSettings').name('설정 JSON 저장');
   actions.add({ loadSettings: () => triggerFileLoad(callbacks.onLoadSettings) }, 'loadSettings').name('설정 JSON 불러오기');
   actions.open();

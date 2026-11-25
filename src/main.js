@@ -546,6 +546,19 @@ function playIntroCamera() {
   }
 }
 
+// A full, consistent restart for re-takes while recording — same starting
+// rotation and camera direction every time, not wherever auto-rotate or a
+// prior outro zoom happened to leave things. Never touches sourceImageUrls
+// or nodes, so any drag-and-dropped custom photos survive (unlike an actual
+// page reload, which loses them).
+function restartIntroOutro() {
+  rootGroup.rotation.y = 0;
+  rotationReset.active = false;
+  restCameraDir = DEFAULT_CAMERA_DIR.clone();
+  outroCamera.active = false;
+  playIntroCamera();
+}
+
 // Shared hold/zoom timing so the camera move and the noise fade-in
 // (getIntroNoiseFactor, used by Motion.update) stay perfectly in sync.
 function getIntroTiming() {
@@ -792,7 +805,10 @@ function startRecording() {
   const stream = exportCanvas.captureStream(60);
   activeRecordingMimeType = pickRecorderMimeType();
   recordedChunks = [];
-  const recorderOptions = { videoBitsPerSecond: 20_000_000 };
+  // 4K60 with a lot of fine per-image detail wants a high bitrate or it
+  // visibly blocks/smears on busy frames; ~50 Mbps is in the range used for
+  // archival/near-lossless 4K60 exports.
+  const recorderOptions = { videoBitsPerSecond: 50_000_000 };
   if (activeRecordingMimeType) recorderOptions.mimeType = activeRecordingMimeType;
   mediaRecorder = new MediaRecorder(stream, recorderOptions);
   mediaRecorder.ondataavailable = (e) => {
@@ -844,7 +860,12 @@ const { gui, setRecordingLabel } = createControlPanel(state, {
     persistState();
     rebuild({ replayIntro: true });
   },
-  onReplayIntro: () => playIntroCamera(),
+  // A full, consistent restart for re-takes while recording — same starting
+  // rotation and camera direction every time, not wherever auto-rotate or a
+  // prior outro zoom happened to leave things. Never touches sourceImageUrls
+  // or nodes, so any drag-and-dropped custom photos survive (unlike an
+  // actual page reload, which loses them).
+  onReplayIntro: () => restartIntroOutro(),
   onHeroOffsetChange: () => playIntroCamera(),
   onManualSave: () => persistState(),
   onUploadHeroImage: async (file) => {
@@ -879,11 +900,15 @@ const { gui, setRecordingLabel } = createControlPanel(state, {
   onFrameGuideChange: () => updateFrameGuide(),
   onToggleRecording: async () => {
     if (!isRecording) {
+      // Every take starts from the exact same clean state, so the single
+      // button press is all it takes to get a correctly-timed recording —
+      // no separate restart click to race against.
+      restartIntroOutro();
       startRecording();
     } else {
       setRecordingLabel('저장 중...');
       await stopRecordingAndSave();
-      setRecordingLabel('녹화 시작');
+      setRecordingLabel('다시시작+녹화 시작');
     }
   },
   onSavePNG: () => {
