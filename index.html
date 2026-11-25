@@ -45,6 +45,16 @@
         background: var(--hamburger-color, #000);
         border-radius: 1px;
       }
+      #frameGuide {
+        position: fixed;
+        box-shadow: 0 0 0 9999px rgba(190, 190, 190, 0.55);
+        pointer-events: none;
+        z-index: 15;
+        display: none;
+      }
+      #frameGuide.active {
+        display: block;
+      }
       #dragOverlay {
         position: fixed;
         inset: 0;
@@ -72,6 +82,22 @@
         color: #888;
         z-index: 200;
         transition: opacity 0.4s ease;
+      }
+
+      /* The hero photo/video is NOT an overlay any more — it replaces one
+         real graph node's own texture in the 3D scene (see main.js), so it
+         stays visible, connected by its lines, after the intro zooms out,
+         and is naturally rendered at exactly 16:9 regardless of the window
+         shape (a correctly-aspected perspective camera doesn't distort
+         world-space proportions). This hidden <video> only supplies decoded
+         frames as a texture source for a custom video upload; it is never
+         itself shown on the page. */
+      #heroVideoSource {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
       }
 
       /* Tone-on-tone panel theme, driven by JS-updated CSS variables on :root
@@ -105,6 +131,8 @@
         <span></span>
         <span></span>
       </button>
+      <div id="frameGuide"></div>
+      <video id="heroVideoSource" muted playsinline loop></video>
       <div id="dragOverlay">여기에 이미지를 놓으세요</div>
       <div id="loadingOverlay">로딩 중...</div>
     </div>
